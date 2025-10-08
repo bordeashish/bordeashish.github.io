@@ -5,6 +5,19 @@
 **Status**: Draft
 **Input**: User description: "Modern GitHub Pages User Site with professional homepage, recruiter engagement, chat interface (AI assistant, AWS integration), sleek UI, front-end only"
 
+**Additional Details (2025-10-07):**
+- The User Site MUST function as a single-page application (SPA).
+- It MUST support deep linking so that a shared URL (e.g., from LinkedIn) can take visitors directly to the chat interface section.
+- The chat interface MUST be accessible via a dedicated route or anchor link (e.g., /#chat or /chat) without requiring a full page reload.
+- The UI MUST provide a smooth transition between the professional summary and the chat interface (e.g., via a toggle, tab, or scroll-to-section interaction).
+- The design MUST emphasize continuity: the chat feels like part of the same page, not a separate site.
+- The SPA MUST be fully responsive and optimized for mobile devices, with breakpoints for major device sizes.
+- The site MUST be runnable locally without a backend, with fallback behavior for chat (e.g., mock responses or disabled input).
+- "Pluggable AWS endpoint" means the chat/AI assistant can be configured via an environment variable or settings panel to connect to any valid CloudFront (or similar) URL.
+- "Minimal external libraries" means only React JS and libraries for routing, accessibility, or AWS integration are allowed; no large UI frameworks or state management libraries.
+- "Smooth transition" is defined as an animated toggle, tab switch, or scroll-to-section interaction that completes in under 500ms.
+- "Modern" and "professional" are quantified by user feedback: 80%+ of test users must rate the UI as such; "continuous" means the chat interface maintains session history and context for each user.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - View Professional Summary (Priority: P1)
@@ -41,10 +54,19 @@ A recruiter or visitor experiences a sleek, professional, and modern UI that bui
 
 1. The homepage MUST present a concise, polished summary of skills, experience, and strengths.
 2. The summary MUST acknowledge its brevity and encourage further engagement.
-3. The site MUST include a chat interface for visitors to ask questions.
-4. The chat interface MUST connect to a professional AI assistant (front-end only in this phase; backend handled separately).
-5. The UI MUST be sleek, professional, and modern, with clear contact options.
-6. All content and interactions MUST build trust and motivate recruiters to contact you directly.
+3. The site MUST function as a single-page application (SPA).
+4. The site MUST support deep linking so that a shared URL (e.g., from LinkedIn) can take visitors directly to the chat interface section.
+5. The chat interface MUST be accessible via a dedicated route or anchor link (e.g., /#chat or /chat) without requiring a full page reload.
+6. The UI MUST provide a smooth transition between the professional summary and the chat interface (e.g., via a toggle, tab, or scroll-to-section interaction).
+7. The design MUST emphasize continuity: the chat feels like part of the same page, not a separate site.
+8. The site MUST include a chat interface for visitors to ask questions.
+9. The chat interface MUST connect to a professional AI assistant (front-end only in this phase; backend handled separately).
+10. The UI MUST be sleek, professional, and modern, with clear contact options.
+11. All content and interactions MUST build trust and motivate recruiters to contact you directly.
+12. The SPA MUST be fully responsive and optimized for mobile devices.
+13. The site MUST be runnable locally without a backend, with fallback behavior for chat.
+14. The chat component MUST send each new user question to the backend along with the full conversation history for that session.
+15. The chat interface MUST maintain session context for continuous, conversational responses.
 
 ## Success Criteria
 
@@ -53,6 +75,13 @@ A recruiter or visitor experiences a sleek, professional, and modern UI that bui
 - 95% of chat responses are professional, relevant, and trust-building (manual review).
 - 100% of contact options are visible and usable on all major devices.
 - 80% of test users rate the UI as "modern" and "professional" in user feedback.
+- 100% of deep links to the chat interface (e.g., /#chat or /chat) load the chat section instantly without a full page reload.
+- 90% of test users report a smooth transition between summary and chat interface.
+- 95% of test users agree the chat feels like part of the same page, not a separate site.
+- 100% of mobile device breakpoints render correctly and pass accessibility checks.
+- 100% of local preview sessions allow basic UI and chat interaction testing, with fallback or mock chat responses.
+- 100% of chat requests sent to the backend include full session history.
+- 100% of session context is maintained for continuous, conversational responses.
 
 ## Assumptions
 
@@ -86,8 +115,11 @@ A recruiter or visitor experiences a sleek, professional, and modern UI that bui
 - Visitor does not engage with chat or contact options
 - Visitor requests information not present in the summary or knowledge base
 - UI fails to load on older browsers
+- Backend endpoint is missing or misconfigured: chat interface disables input and displays a clear message.
+- Mobile device or accessibility features fail: fallback layout and ARIA attributes are used.
 
 ## Notes
 
 - All UI and content must be reviewed for professionalism and clarity before launch.
 - Accessibility and mobile responsiveness are required for all major devices.
+- All ambiguous terms are clarified above; requirements are consistent and measurable across all sections.

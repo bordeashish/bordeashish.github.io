@@ -1,0 +1,39 @@
+.nav {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: #fff;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.nav button {
+  background: #0078d4;
+  color: #fff;
+  border: none;
+  padding: 0.5rem 1.2rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.nav button[aria-pressed="true"] {
+  background: #005fa3;
+}
+
+.content {
+  flex: 1;
+  padding: 2rem;
+  animation: fadeIn 0.4s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 600px) {
+  .content {
+    padding: 1rem 0.5rem;
+  }
+}
