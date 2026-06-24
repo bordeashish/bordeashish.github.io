@@ -7,3 +7,6 @@
 # misc
 .DS_Store
 .env
+
+# playwright mcp test artifacts
+/.playwright-mcp

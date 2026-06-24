@@ -1,18 +1,7 @@
-body {
-  margin: 0;
-  font-family: 'Segoe UI', Arial, sans-serif;
-  background: #f7f9fa;
-  color: #222;
-}
-
+/* Minimal pre-paint layout. Visual styling lives in the token system
+   (src/index.css) and component stylesheets. */
 #root {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-@media (max-width: 600px) {
-  #root {
-    padding: 0 8px;
-  }
 }

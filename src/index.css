@@ -1,25 +1,142 @@
-/* Additional global styles for accessibility and mobile responsiveness */
+/* ==========================================================================
+   Design tokens — single source of truth for color, type, space, radius,
+   shadow and motion. Components reference these variables only.
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  --primary: #0078d4;
-  --background: #f7f9fa;
+  /* Neutrals (light theme) */
+  --color-bg: #f6f8fb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f4f9;
+  --color-border: #e3e8ef;
+  --color-text: #1a2230;
+  --color-text-muted: #5b6675;
+
+  /* Accent */
+  --color-accent: #2563eb;
+  --color-accent-hover: #1d4ed8;
+  --color-accent-soft: #e6efff;
+  --color-on-accent: #ffffff;
+
+  /* Feedback */
+  --color-danger: #c0392b;
+  --color-danger-soft: #fdecea;
+
+  /* Typography */
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --text-xs: 0.78rem;
+  --text-sm: 0.9rem;
+  --text-base: 1rem;
+  --text-lg: 1.18rem;
+  --text-xl: 1.6rem;
+  --text-2xl: 2.4rem;
+  --leading: 1.6;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-8: 3rem;
+
+  /* Radii */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-full: 999px;
+
+  /* Elevation */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+
+  /* Layout */
+  --container: 760px;
+  --container-wide: 920px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration: 0.35s;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-surface-2: #1c232d;
+    --color-border: #2a313c;
+    --color-text: #e6edf3;
+    --color-text-muted: #9aa7b6;
+
+    --color-accent: #4f8cff;
+    --color-accent-hover: #6ea0ff;
+    --color-accent-soft: #1a2740;
+    --color-on-accent: #ffffff;
+
+    --color-danger: #ff6b5e;
+    --color-danger-soft: #3a1c1a;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.55);
+  }
+}
+
+/* ==========================================================================
+   Base / reset
+   ========================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: #222;
-  font-family: 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-[role="alert"] {
-  color: #d8000c;
-  background: #ffd2d2;
-  padding: 0.5em;
-  border-radius: 4px;
-  margin-top: 1em;
+h1,
+h2,
+h3,
+p {
+  margin: 0;
 }
 
-@media (max-width: 600px) {
-  body {
-    font-size: 1rem;
+a {
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Visible, consistent focus ring for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
   }
 }
