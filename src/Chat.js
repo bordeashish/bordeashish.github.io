@@ -64,6 +64,7 @@ function parseInline(text) {
 const BULLET = /^\s*[-*]\s+/;
 const NUMBERED = /^\s*\d+\.\s+/;
 const HEADING = /^\s*(#{1,6})\s+(.*)$/;
+const HR = /^\s*([-*_])\1{2,}\s*$/; // ---, ***, ___
 
 function renderMarkdown(text) {
   const lines = String(text).replace(/\r/g, '').split('\n');
@@ -72,6 +73,12 @@ function renderMarkdown(text) {
   let key = 0;
   while (i < lines.length) {
     if (!lines[i].trim()) { i += 1; continue; } // blank line separates blocks
+
+    if (HR.test(lines[i])) { // horizontal rule (---, ***, ___)
+      blocks.push(<hr key={key++} className="md-hr" />);
+      i += 1;
+      continue;
+    }
 
     if (BULLET.test(lines[i])) {
       const items = [];
@@ -107,7 +114,8 @@ function renderMarkdown(text) {
       lines[i].trim() &&
       !BULLET.test(lines[i]) &&
       !NUMBERED.test(lines[i]) &&
-      !HEADING.test(lines[i])
+      !HEADING.test(lines[i]) &&
+      !HR.test(lines[i])
     ) {
       para.push(lines[i]);
       i += 1;
