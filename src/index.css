@@ -1,23 +1,32 @@
 /* ==========================================================================
    Design tokens — single source of truth for color, type, space, radius,
    shadow and motion. Components reference these variables only.
+
+   Theming is driven by a `data-theme` attribute on <html> (set before paint
+   by an inline script in index.html), so a manual toggle can override the
+   system preference. A prefers-color-scheme fallback covers the no-JS case.
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Neutrals (light theme) */
-  --color-bg: #f6f8fb;
+  /* Neutrals (light — warm, near-monochrome) */
+  --color-bg: #fafaf9;
   --color-surface: #ffffff;
-  --color-surface-2: #f1f4f9;
-  --color-border: #e3e8ef;
-  --color-text: #1a2230;
-  --color-text-muted: #5b6675;
+  --color-surface-2: #f5f5f4;
+  --color-border: #e7e5e4;
+  --color-text: #1c1c1f;
+  --color-text-muted: #6b6b73;
 
-  /* Accent */
-  --color-accent: #2563eb;
-  --color-accent-hover: #1d4ed8;
-  --color-accent-soft: #e6efff;
+  /* Accent — refined indigo → violet */
+  --color-accent: #4f46e5;
+  --color-accent-hover: #4338ca;
+  --color-accent-soft: #eef0ff;
   --color-on-accent: #ffffff;
+  --gradient-accent: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  /* Hero glow */
+  --color-glow-1: rgba(99, 102, 241, 0.18);
+  --color-glow-2: rgba(139, 92, 246, 0.10);
 
   /* Feedback */
   --color-danger: #c0392b;
@@ -30,7 +39,7 @@
   --text-base: 1rem;
   --text-lg: 1.18rem;
   --text-xl: 1.6rem;
-  --text-2xl: 2.4rem;
+  --text-2xl: 2.6rem;
   --leading: 1.6;
 
   /* Spacing scale */
@@ -49,9 +58,10 @@
   --radius-full: 999px;
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
-  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.06);
-  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.04), 0 1px 3px rgba(20, 20, 30, 0.06);
+  --shadow-md: 0 4px 14px rgba(20, 20, 30, 0.06), 0 2px 6px rgba(20, 20, 30, 0.05);
+  --shadow-lg: 0 18px 50px rgba(20, 20, 30, 0.10), 0 6px 16px rgba(20, 20, 30, 0.06);
+  --shadow-glow: 0 8px 24px rgba(79, 70, 229, 0.28);
 
   /* Layout */
   --container: 760px;
@@ -62,26 +72,58 @@
   --duration: 0.35s;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-bg: #0d1117;
-    --color-surface: #161b22;
-    --color-surface-2: #1c232d;
-    --color-border: #2a313c;
-    --color-text: #e6edf3;
-    --color-text-muted: #9aa7b6;
+/* Dark theme — applied via attribute (manual toggle wins) ... */
+:root[data-theme='dark'] {
+  --color-bg: #0b0b0f;
+  --color-surface: #141418;
+  --color-surface-2: #1b1b21;
+  --color-border: #26262d;
+  --color-text: #f4f4f5;
+  --color-text-muted: #a1a1aa;
 
-    --color-accent: #4f8cff;
-    --color-accent-hover: #6ea0ff;
-    --color-accent-soft: #1a2740;
-    --color-on-accent: #ffffff;
+  --color-accent: #818cf8;
+  --color-accent-hover: #a5b4fc;
+  --color-accent-soft: #1e1b3a;
+  --color-on-accent: #ffffff;
+  --gradient-accent: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+
+  --color-glow-1: rgba(99, 102, 241, 0.22);
+  --color-glow-2: rgba(139, 92, 246, 0.16);
+
+  --color-danger: #ff6b5e;
+  --color-danger-soft: #3a1c1a;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --shadow-glow: 0 8px 28px rgba(129, 140, 248, 0.30);
+}
+
+/* ... and via system preference when JS hasn't set an explicit choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-bg: #0b0b0f;
+    --color-surface: #141418;
+    --color-surface-2: #1b1b21;
+    --color-border: #26262d;
+    --color-text: #f4f4f5;
+    --color-text-muted: #a1a1aa;
+
+    --color-accent: #818cf8;
+    --color-accent-hover: #a5b4fc;
+    --color-accent-soft: #1e1b3a;
+    --gradient-accent: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+
+    --color-glow-1: rgba(99, 102, 241, 0.22);
+    --color-glow-2: rgba(139, 92, 246, 0.16);
 
     --color-danger: #ff6b5e;
     --color-danger-soft: #3a1c1a;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 14px 40px rgba(0, 0, 0, 0.55);
+    --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
+    --shadow-glow: 0 8px 28px rgba(129, 140, 248, 0.30);
   }
 }
 
@@ -105,8 +147,11 @@ body {
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--leading);
+  font-feature-settings: 'cv11', 'ss01';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
 }
 
 h1,
@@ -114,6 +159,12 @@ h2,
 h3,
 p {
   margin: 0;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
 }
 
 a {
