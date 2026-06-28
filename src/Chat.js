@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import './Chat.css';
 
 const AWS_ENDPOINT = process.env.REACT_APP_AWS_ENDPOINT || '';
+const API_KEY = process.env.REACT_APP_API_KEY || '';
 
 const SUGGESTIONS = [
   { label: 'Standout achievements', query: "What are Ashish's standout achievements?" },
@@ -11,16 +12,27 @@ const SUGGESTIONS = [
 ];
 
 const ERROR_REPLY = 'Sorry — I had trouble reaching the assistant. Please try again.';
+const BUSY_REPLY = 'The assistant is busy right now — please try again later.';
+const TOO_LONG_REPLY = 'That message is a bit too long — please shorten it and try again.';
 
 async function sendMessageToAWS(messages) {
   if (!AWS_ENDPOINT) return { reply: 'Backend not configured.' };
   try {
     const res = await fetch(AWS_ENDPOINT, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
+      },
       body: JSON.stringify({ messages }),
     });
-    if (!res.ok) return { reply: ERROR_REPLY };
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (data.reply) return { reply: data.reply };
+      if (res.status === 429) return { reply: BUSY_REPLY };
+      if (res.status === 400 || res.status === 413) return { reply: TOO_LONG_REPLY };
+      return { reply: ERROR_REPLY }; // covers 403 (config problem) + anything else
+    }
     const data = await res.json().catch(() => ({}));
     return { reply: data.reply || ERROR_REPLY };
   } catch {
@@ -324,6 +336,7 @@ export default function Chat({ inputRef: externalInputRef }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading || !isBackendConfigured}
+            maxLength={1000}
           />
           <button
             type="submit"
@@ -336,6 +349,10 @@ export default function Chat({ inputRef: externalInputRef }) {
             </svg>
           </button>
         </form>
+
+        {input.length > 0 && (
+          <p className="composer__counter">{input.length}/1000</p>
+        )}
 
         {!isBackendConfigured && (
           <p className="chat__notice" role="alert">

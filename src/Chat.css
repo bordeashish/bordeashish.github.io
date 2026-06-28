@@ -335,6 +335,13 @@
   cursor: not-allowed;
 }
 
+.composer__counter {
+  margin: calc(-1 * var(--space-2)) var(--space-4) 0;
+  text-align: right;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 /* ---------- Notice ---------- */
 .chat__notice {
   margin-top: var(--space-3);
