@@ -370,14 +370,15 @@ export default function Chat({ inputRef: externalInputRef }) {
           <p className="composer__counter">{input.length}/1000</p>
         )}
 
-        {/* Invisible widget, mounted once for the whole conversation. It auto-solves
-            on render and after each reset(); if Cloudflare escalates to an
-            interactive challenge it materializes here, below the composer. */}
+        {/* Widget mounted once for the whole conversation; auto-solves on render
+            and after each reset(). interaction-only keeps it hidden unless
+            Cloudflare actually requires a challenge, which materializes here,
+            below the composer — so it must stay renderable (never display:none). */}
         <div className="chat__turnstile">
           <Turnstile
             ref={tsRef}
             siteKey={TURNSTILE_SITEKEY}
-            options={{ action: 'chat' }}
+            options={{ action: 'chat', appearance: 'interaction-only' }}
             scriptOptions={{ onError: () => { setTsToken(null); setTsError(true); } }}
             onSuccess={(token) => { setTsToken(token); setTsError(false); }}
             onExpire={() => { setTsToken(null); tsRef.current?.reset(); }}
