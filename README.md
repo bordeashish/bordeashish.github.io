@@ -24,13 +24,17 @@ This is a single-page React app for recruiter engagement, featuring a summary an
 
 ## Deployment (GitHub Pages)
 
-1. Set the `homepage` field in `package.json` to your repo URL.
-2. Build and deploy:
+The site is a GitHub Pages *user site* (`bordeashish.github.io`) served from the
+`gh-pages` branch. `homepage` in `package.json` is `"."` (relative asset paths) —
+correct for the domain root; don't change it.
+
+1. Deploy (builds fresh automatically via the `predeploy` script):
    ```bash
-   npm run build
    npm run deploy
    ```
-3. Enable GitHub Pages in your repo settings, pointing to the `gh-pages` branch.
+2. One-time repo setting: GitHub Pages source must point at the `gh-pages`
+   branch (root). The `gh-pages` branch is machine-managed build output — never
+   edit it by hand or merge it into source branches.
 
 ## Features
 - Professional summary section
