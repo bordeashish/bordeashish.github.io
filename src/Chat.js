@@ -1,8 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Turnstile } from '@marsidev/react-turnstile';
 import './Chat.css';
 
-const AWS_ENDPOINT = process.env.REACT_APP_AWS_ENDPOINT || '';
-const API_KEY = process.env.REACT_APP_API_KEY || '';
+// Both values are public by design: the sitekey is meant to be embedded in client
+// HTML, and the Worker URL is protected by Turnstile + a server-side key, not by
+// obscurity. Env vars exist only to override (e.g. pointing at a staging Worker).
+const CHAT_API_URL =
+  process.env.REACT_APP_CHAT_API_URL ||
+  'https://ashish-portfolio-chatbot-edge.bordeashish.workers.dev/';
+const TURNSTILE_SITEKEY =
+  process.env.REACT_APP_TURNSTILE_SITEKEY || '0x4AAAAAAD56IKsZD9ZC6BV2';
 
 const SUGGESTIONS = [
   { label: 'Standout achievements', query: "What are Ashish's standout achievements?" },
@@ -14,27 +21,27 @@ const SUGGESTIONS = [
 const ERROR_REPLY = 'Sorry — I had trouble reaching the assistant. Please try again.';
 const BUSY_REPLY = 'The assistant is busy right now — please try again later.';
 const TOO_LONG_REPLY = 'That message is a bit too long — please shorten it and try again.';
+const VERIFY_REPLY = "Human verification didn't go through — please try sending again.";
 
-async function sendMessageToAWS(messages) {
-  if (!AWS_ENDPOINT) return { reply: 'Backend not configured.' };
+async function sendMessageToWorker(messages, turnstileToken) {
+  if (!turnstileToken) return { reply: VERIFY_REPLY };
   try {
-    const res = await fetch(AWS_ENDPOINT, {
+    const res = await fetch(CHAT_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(API_KEY ? { 'x-api-key': API_KEY } : {}),
+        'cf-turnstile-response': turnstileToken,
       },
       body: JSON.stringify({ messages }),
     });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      if (data.reply) return { reply: data.reply };
-      if (res.status === 429) return { reply: BUSY_REPLY };
-      if (res.status === 400 || res.status === 413) return { reply: TOO_LONG_REPLY };
-      return { reply: ERROR_REPLY }; // covers 403 (config problem) + anything else
-    }
+    // The Worker normalizes every JSON response to { reply }, any status; parse
+    // defensively anyway — a network/edge failure may carry no JSON at all.
     const data = await res.json().catch(() => ({}));
-    return { reply: data.reply || ERROR_REPLY };
+    if (data.reply) return { reply: data.reply };
+    if (res.status === 403) return { reply: VERIFY_REPLY };
+    if (res.status === 429) return { reply: BUSY_REPLY };
+    if (res.status === 400 || res.status === 413) return { reply: TOO_LONG_REPLY };
+    return { reply: ERROR_REPLY };
   } catch {
     return { reply: ERROR_REPLY };
   }
@@ -151,12 +158,16 @@ export default function Chat({ inputRef: externalInputRef }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [stream, setStream] = useState(null); // { full, shown } in-progress reply
+  // Turnstile tokens are single-use: consumed on each send, then reset() solves
+  // the next one in the background. null = no token yet (solving).
+  const [tsToken, setTsToken] = useState(null);
+  const [tsError, setTsError] = useState(false);
+  const tsRef = useRef(null);
   const internalInputRef = useRef();
   const inputRef = externalInputRef || internalInputRef;
   const threadRef = useRef();
   const timerRef = useRef(null);
 
-  const isBackendConfigured = !!AWS_ENDPOINT;
   const isEmpty = messages.length === 0 && !stream;
 
   // Keep the most recent question anchored near the top of the thread, so the
@@ -235,15 +246,20 @@ export default function Chat({ inputRef: externalInputRef }) {
 
   const send = async (text) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || loading || !tsToken) return;
     // Finalize any in-progress reveal before starting a new turn.
     if (stream) commitStream(stream.full);
+
+    // Consume the single-use token and immediately start solving the next one.
+    const tokenToUse = tsToken;
+    setTsToken(null);
+    tsRef.current?.reset();
 
     const newMessages = [...messages, { role: 'user', content: trimmed }];
     setMessages(newMessages);
     setInput('');
     setLoading(true);
-    const response = await sendMessageToAWS(newMessages);
+    const response = await sendMessageToWorker(newMessages, tokenToUse);
     setLoading(false);
     setStream({ full: response.reply, shown: '' });
     inputRef.current?.focus();
@@ -262,8 +278,8 @@ export default function Chat({ inputRef: externalInputRef }) {
           <div>
             <h2 className="chat__title">AI Assistant</h2>
             <span className="chat__status">
-              <span className={`chat__status-dot ${isBackendConfigured ? '' : 'is-off'}`} />
-              {isBackendConfigured ? 'Online' : 'Offline'}
+              <span className={`chat__status-dot ${tsError ? 'is-off' : ''}`} />
+              {tsError ? 'Offline' : 'Online'}
             </span>
           </div>
         </header>
@@ -317,7 +333,7 @@ export default function Chat({ inputRef: externalInputRef }) {
                 type="button"
                 className="chip"
                 onClick={() => send(s.query)}
-                disabled={!isBackendConfigured}
+                disabled={tsError || !tsToken}
                 title={s.query}
               >
                 {s.label}
@@ -331,18 +347,18 @@ export default function Chat({ inputRef: externalInputRef }) {
             ref={inputRef}
             type="text"
             className="composer__input"
-            placeholder={isBackendConfigured ? 'Type your message…' : 'Chat is currently offline'}
+            placeholder={tsError ? 'Verification unavailable' : 'Type your message…'}
             aria-label="Type your message"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            disabled={loading || !isBackendConfigured}
+            disabled={loading || tsError}
             maxLength={1000}
           />
           <button
             type="submit"
             className="composer__send"
             aria-label="Send message"
-            disabled={loading || !isBackendConfigured || !input.trim()}
+            disabled={loading || tsError || !tsToken || !input.trim()}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 20.5v-6l8-2.5-8-2.5v-6l18 8.5z" fill="currentColor" />
@@ -354,9 +370,31 @@ export default function Chat({ inputRef: externalInputRef }) {
           <p className="composer__counter">{input.length}/1000</p>
         )}
 
-        {!isBackendConfigured && (
+        {/* Invisible widget, mounted once for the whole conversation. It auto-solves
+            on render and after each reset(); if Cloudflare escalates to an
+            interactive challenge it materializes here, below the composer. */}
+        <div className="chat__turnstile">
+          <Turnstile
+            ref={tsRef}
+            siteKey={TURNSTILE_SITEKEY}
+            options={{ action: 'chat' }}
+            scriptOptions={{ onError: () => { setTsToken(null); setTsError(true); } }}
+            onSuccess={(token) => { setTsToken(token); setTsError(false); }}
+            onExpire={() => { setTsToken(null); tsRef.current?.reset(); }}
+            onError={() => { setTsToken(null); setTsError(true); }}
+          />
+        </div>
+
+        {tsError && (
           <p className="chat__notice" role="alert">
-            Chat backend not configured. Set <code>REACT_APP_AWS_ENDPOINT</code> to enable live replies.
+            Human verification is unavailable (it may be blocked by an extension).{' '}
+            <button
+              type="button"
+              className="chat__notice-retry"
+              onClick={() => { setTsError(false); tsRef.current?.reset(); }}
+            >
+              Retry
+            </button>
           </p>
         )}
       </div>

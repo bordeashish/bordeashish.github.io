@@ -1,6 +1,6 @@
 # Professional AI Assistant Homepage
 
-This is a single-page React app for recruiter engagement, featuring a summary and chat interface with AWS integration. 
+This is a single-page React app for recruiter engagement, featuring a summary and a chat interface backed by a Cloudflare Worker (which verifies Cloudflare Turnstile and talks to the AWS backend).
 
 ## Getting Started
 
@@ -8,13 +8,19 @@ This is a single-page React app for recruiter engagement, featuring a summary an
    ```bash
    npm install
    ```
-2. **Set AWS endpoint (optional):**
-   Edit `.env` and set `REACT_APP_AWS_ENDPOINT` to your AWS backend URL.
-3. **Run locally:**
+2. **Run locally:**
    ```bash
    npm start
    ```
    The app will open at http://localhost:3000
+
+   The chat works out of the box — the Worker URL and Turnstile sitekey are public
+   values hardcoded in `src/Chat.js`. To point at a different Worker or sitekey,
+   copy `.env.example` to `.env` and set the overrides there.
+
+   Note: the dev server must run on port 3000 exactly — the Worker's origin
+   allow-list only includes `http://localhost:3000` (and the production site), so
+   requests from the port-3001 fallback are rejected with a 403.
 
 ## Deployment (GitHub Pages)
 
@@ -29,9 +35,8 @@ This is a single-page React app for recruiter engagement, featuring a summary an
 ## Features
 - Professional summary section
 - Chat interface with session context
-- AWS endpoint integration (pluggable)
+- Cloudflare Worker backend with invisible Turnstile bot protection
 - Accessibility (ARIA), mobile responsiveness
-- Fallback logic for local preview
 
 ## File Structure
 - `src/` - React components and app code

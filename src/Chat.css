@@ -357,6 +357,23 @@
   font-size: 0.85em;
 }
 
+.chat__notice-retry {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Container for the invisible Turnstile widget. Takes no space normally; if
+   Cloudflare escalates to an interactive challenge, it renders centered here. */
+.chat__turnstile {
+  display: flex;
+  justify-content: center;
+}
+
 @media (max-width: 600px) {
   .chat__panel {
     height: min(78vh, 600px);
