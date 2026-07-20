@@ -158,16 +158,26 @@ export default function Chat({ inputRef: externalInputRef }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [stream, setStream] = useState(null); // { full, shown } in-progress reply
-  // Turnstile tokens are single-use: consumed on each send, then reset() solves
-  // the next one in the background. null = no token yet (solving).
-  const [tsToken, setTsToken] = useState(null);
+  // Turnstile runs in deferred-execution mode: no challenge on page load — the
+  // first send starts it (execute()), and each send then pre-solves the next
+  // message's token in the background. send() awaits the token, so no request
+  // ever goes out without one even though the UI is never token-gated.
   const [tsError, setTsError] = useState(false);
+  // Cloudflare requires the visitor to tick the checkbox (interactive challenge).
+  const [tsInteractionNeeded, setTsInteractionNeeded] = useState(false);
   const tsRef = useRef(null);
+  const tsStartedRef = useRef(false); // execute() called at least once
   // Consecutive widget failures. First-visit challenges can fail with transient,
   // retryable codes (Cloudflare 300xxx/600xxx) — retry silently before alarming
-  // the visitor. Sends stay blocked regardless via the !tsToken gate.
+  // the visitor.
   const tsFailsRef = useRef(0);
   const TS_SILENT_RETRIES = 2;
+
+  // Clear + start solving a fresh token (tokens are single-use).
+  const tsSolveNext = () => {
+    tsRef.current?.reset();
+    tsRef.current?.execute();
+  };
   const internalInputRef = useRef();
   const inputRef = externalInputRef || internalInputRef;
   const threadRef = useRef();
@@ -251,20 +261,33 @@ export default function Chat({ inputRef: externalInputRef }) {
 
   const send = async (text) => {
     const trimmed = text.trim();
-    if (!trimmed || loading || !tsToken) return;
+    if (!trimmed || loading || tsError) return;
     // Finalize any in-progress reveal before starting a new turn.
     if (stream) commitStream(stream.full);
-
-    // Consume the single-use token and immediately start solving the next one.
-    const tokenToUse = tsToken;
-    setTsToken(null);
-    tsRef.current?.reset();
 
     const newMessages = [...messages, { role: 'user', content: trimmed }];
     setMessages(newMessages);
     setInput('');
     setLoading(true);
-    const response = await sendMessageToWorker(newMessages, tokenToUse);
+
+    // Acquire the single-use token. The first send starts the challenge; later
+    // sends usually find the pre-solved token instantly. If Cloudflare demands
+    // interaction, the wait covers the visitor ticking the checkbox below.
+    let token = null;
+    if (tsRef.current) {
+      if (!tsStartedRef.current) {
+        tsStartedRef.current = true;
+        tsRef.current.execute();
+      }
+      try {
+        token = await tsRef.current.getResponsePromise(30000);
+      } catch {
+        token = null;
+      }
+      tsSolveNext(); // consume it and pre-solve the next message's token
+    }
+
+    const response = await sendMessageToWorker(newMessages, token);
     setLoading(false);
     setStream({ full: response.reply, shown: '' });
     inputRef.current?.focus();
@@ -338,7 +361,7 @@ export default function Chat({ inputRef: externalInputRef }) {
                 type="button"
                 className="chip"
                 onClick={() => send(s.query)}
-                disabled={tsError || !tsToken}
+                disabled={tsError}
                 title={s.query}
               >
                 {s.label}
@@ -363,7 +386,7 @@ export default function Chat({ inputRef: externalInputRef }) {
             type="submit"
             className="composer__send"
             aria-label="Send message"
-            disabled={loading || tsError || !tsToken || !input.trim()}
+            disabled={loading || tsError || !input.trim()}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path d="M3 20.5v-6l8-2.5-8-2.5v-6l18 8.5z" fill="currentColor" />
@@ -375,30 +398,39 @@ export default function Chat({ inputRef: externalInputRef }) {
           <p className="composer__counter">{input.length}/1000</p>
         )}
 
-        {/* Widget mounted once for the whole conversation; auto-solves on render
-            and after each reset(). interaction-only keeps it hidden unless
-            Cloudflare actually requires a challenge, which materializes here,
-            below the composer — so it must stay renderable (never display:none). */}
+        {tsInteractionNeeded && !tsError && (
+          <p className="chat__verify-hint">
+            Quick human check — please tick the box below to continue.
+          </p>
+        )}
+
+        {/* Widget mounted once for the whole conversation, in deferred-execution
+            mode: the challenge only runs when send() calls execute(). It stays
+            hidden unless Cloudflare requires an interactive challenge, which
+            materializes here, below the composer — so this container must stay
+            renderable (never display:none). */}
         <div className="chat__turnstile">
           <Turnstile
             ref={tsRef}
             siteKey={TURNSTILE_SITEKEY}
-            options={{ action: 'chat', appearance: 'interaction-only' }}
-            scriptOptions={{ onError: () => { setTsToken(null); setTsError(true); } }}
-            onSuccess={(token) => {
+            options={{ action: 'chat', appearance: 'interaction-only', execution: 'execute' }}
+            scriptOptions={{ onError: () => setTsError(true) }}
+            onSuccess={() => {
               tsFailsRef.current = 0;
-              setTsToken(token);
               setTsError(false);
+              setTsInteractionNeeded(false);
             }}
-            onExpire={() => { setTsToken(null); tsRef.current?.reset(); }}
+            onBeforeInteractive={() => setTsInteractionNeeded(true)}
+            onAfterInteractive={() => setTsInteractionNeeded(false)}
+            onExpire={() => tsSolveNext()}
             onError={(code) => {
-              setTsToken(null);
               tsFailsRef.current += 1;
               if (tsFailsRef.current <= TS_SILENT_RETRIES) {
                 console.warn(`Turnstile error ${code} — retrying (${tsFailsRef.current}/${TS_SILENT_RETRIES})`);
-                tsRef.current?.reset();
+                tsSolveNext();
               } else {
                 console.warn(`Turnstile error ${code} — giving up after ${TS_SILENT_RETRIES} retries`);
+                setTsInteractionNeeded(false);
                 setTsError(true);
               }
             }}
@@ -411,7 +443,11 @@ export default function Chat({ inputRef: externalInputRef }) {
             <button
               type="button"
               className="chat__notice-retry"
-              onClick={() => { tsFailsRef.current = 0; setTsError(false); tsRef.current?.reset(); }}
+              onClick={() => {
+                tsFailsRef.current = 0;
+                setTsError(false);
+                if (tsStartedRef.current) tsSolveNext();
+              }}
             >
               Retry
             </button>

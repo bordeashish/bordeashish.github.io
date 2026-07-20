@@ -367,6 +367,13 @@
   cursor: pointer;
 }
 
+.chat__verify-hint {
+  margin-top: var(--space-3);
+  text-align: center;
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
 /* Container for the invisible Turnstile widget. Takes no space normally; if
    Cloudflare escalates to an interactive challenge, it renders centered here. */
 .chat__turnstile {
