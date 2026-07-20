@@ -278,6 +278,11 @@ export default function Chat({ inputRef: externalInputRef }) {
       if (!tsStartedRef.current) {
         tsStartedRef.current = true;
         tsRef.current.execute();
+      } else if (tsRef.current.isExpired()) {
+        // Tokens live ~5 min and background tabs throttle timers, so the
+        // expired-callback can lag a tab left idle — re-mint instead of
+        // sending a dead token (→ timeout-or-duplicate 403).
+        tsSolveNext();
       }
       try {
         token = await tsRef.current.getResponsePromise(30000);
