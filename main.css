@@ -1,0 +1,7 @@
+/* Minimal pre-paint layout. Visual styling lives in the token system
+   (src/index.css) and component stylesheets. */
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
