@@ -163,6 +163,11 @@ export default function Chat({ inputRef: externalInputRef }) {
   const [tsToken, setTsToken] = useState(null);
   const [tsError, setTsError] = useState(false);
   const tsRef = useRef(null);
+  // Consecutive widget failures. First-visit challenges can fail with transient,
+  // retryable codes (Cloudflare 300xxx/600xxx) — retry silently before alarming
+  // the visitor. Sends stay blocked regardless via the !tsToken gate.
+  const tsFailsRef = useRef(0);
+  const TS_SILENT_RETRIES = 2;
   const internalInputRef = useRef();
   const inputRef = externalInputRef || internalInputRef;
   const threadRef = useRef();
@@ -380,9 +385,23 @@ export default function Chat({ inputRef: externalInputRef }) {
             siteKey={TURNSTILE_SITEKEY}
             options={{ action: 'chat', appearance: 'interaction-only' }}
             scriptOptions={{ onError: () => { setTsToken(null); setTsError(true); } }}
-            onSuccess={(token) => { setTsToken(token); setTsError(false); }}
+            onSuccess={(token) => {
+              tsFailsRef.current = 0;
+              setTsToken(token);
+              setTsError(false);
+            }}
             onExpire={() => { setTsToken(null); tsRef.current?.reset(); }}
-            onError={() => { setTsToken(null); setTsError(true); }}
+            onError={(code) => {
+              setTsToken(null);
+              tsFailsRef.current += 1;
+              if (tsFailsRef.current <= TS_SILENT_RETRIES) {
+                console.warn(`Turnstile error ${code} — retrying (${tsFailsRef.current}/${TS_SILENT_RETRIES})`);
+                tsRef.current?.reset();
+              } else {
+                console.warn(`Turnstile error ${code} — giving up after ${TS_SILENT_RETRIES} retries`);
+                setTsError(true);
+              }
+            }}
           />
         </div>
 
@@ -392,7 +411,7 @@ export default function Chat({ inputRef: externalInputRef }) {
             <button
               type="button"
               className="chat__notice-retry"
-              onClick={() => { setTsError(false); tsRef.current?.reset(); }}
+              onClick={() => { tsFailsRef.current = 0; setTsError(false); tsRef.current?.reset(); }}
             >
               Retry
             </button>
