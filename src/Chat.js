@@ -23,8 +23,21 @@ const BUSY_REPLY = 'The assistant is busy right now — please try again later.'
 const TOO_LONG_REPLY = 'That message is a bit too long — please shorten it and try again.';
 const VERIFY_REPLY = "Human verification didn't go through — please try sending again.";
 
+// Abort requests that outlive every server-side ceiling (API Gateway cuts off
+// at 29s), so a hung mobile connection fails into the retry path instead of
+// leaving the chat loading forever.
+const FETCH_TIMEOUT_MS = 50000;
+const RETRY_DELAY_MS = 500;
+
+// Resolves to { reply, ok, retryable }. `ok`: a 2xx with a reply — only these
+// turns may enter the history sent back to the backend. `retryable`: the
+// request died in transit (thrown fetch / timeout abort) — the server may never
+// have seen it, so one silent retry with a fresh token is safe. Responses the
+// server actually answered are never retried (would double-bill quota).
 async function sendMessageToWorker(messages, turnstileToken) {
-  if (!turnstileToken) return { reply: VERIFY_REPLY };
+  if (!turnstileToken) return { reply: VERIFY_REPLY, ok: false, retryable: false };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
     const res = await fetch(CHAT_API_URL, {
       method: 'POST',
@@ -33,17 +46,21 @@ async function sendMessageToWorker(messages, turnstileToken) {
         'cf-turnstile-response': turnstileToken,
       },
       body: JSON.stringify({ messages }),
+      signal: controller.signal,
     });
     // The Worker normalizes every JSON response to { reply }, any status; parse
-    // defensively anyway — a network/edge failure may carry no JSON at all.
+    // defensively anyway — an edge failure may carry no JSON at all.
     const data = await res.json().catch(() => ({}));
-    if (data.reply) return { reply: data.reply };
-    if (res.status === 403) return { reply: VERIFY_REPLY };
-    if (res.status === 429) return { reply: BUSY_REPLY };
-    if (res.status === 400 || res.status === 413) return { reply: TOO_LONG_REPLY };
-    return { reply: ERROR_REPLY };
+    if (res.ok && data.reply) return { reply: data.reply, ok: true, retryable: false };
+    if (data.reply) return { reply: data.reply, ok: false, retryable: false };
+    if (res.status === 403) return { reply: VERIFY_REPLY, ok: false, retryable: false };
+    if (res.status === 429) return { reply: BUSY_REPLY, ok: false, retryable: false };
+    if (res.status === 400 || res.status === 413) return { reply: TOO_LONG_REPLY, ok: false, retryable: false };
+    return { reply: ERROR_REPLY, ok: false, retryable: false };
   } catch {
-    return { reply: ERROR_REPLY };
+    return { reply: ERROR_REPLY, ok: false, retryable: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -209,23 +226,30 @@ export default function Chat({ inputRef: externalInputRef }) {
     requestAnimationFrame(() => scrollQuestionToTop(smooth ? 'smooth' : 'auto'));
   }, [messages]);
 
-  // Commit the in-progress streamed reply to the message history.
-  const commitStream = (full) => {
+  // Commit the in-progress streamed reply to the message history. Transient
+  // turns (machine/error text) stay visible in the thread but are display-only:
+  // send() filters them out of the payload that goes to the backend.
+  const commitStream = (full, transient) => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    setMessages((prev) => [...prev, { role: 'assistant', content: full }]);
+    setMessages((prev) => [
+      ...prev,
+      transient
+        ? { role: 'assistant', content: full, transient: true }
+        : { role: 'assistant', content: full },
+    ]);
     setStream(null);
   };
 
   // Drive the word-by-word reveal whenever a new stream target is set.
   useEffect(() => {
     if (!stream) return;
-    const { full } = stream;
+    const { full, transient } = stream;
 
     if (prefersReducedMotion()) {
-      commitStream(full);
+      commitStream(full, transient);
       return;
     }
 
@@ -244,7 +268,7 @@ export default function Chat({ inputRef: externalInputRef }) {
       }
       const shownText = words.slice(0, i).join('');
       if (i >= words.length) {
-        commitStream(full);
+        commitStream(full, transient);
       } else {
         setStream((s) => (s ? { ...s, shown: shownText } : s));
         scrollQuestionToTop('auto'); // keep the question anchored as the answer grows
@@ -262,13 +286,28 @@ export default function Chat({ inputRef: externalInputRef }) {
   const send = async (text) => {
     const trimmed = text.trim();
     if (!trimmed || loading || tsError) return;
-    // Finalize any in-progress reveal before starting a new turn.
-    if (stream) commitStream(stream.full);
 
-    const newMessages = [...messages, { role: 'user', content: trimmed }];
-    setMessages(newMessages);
+    // Finalize any in-progress reveal before starting a new turn. Track what it
+    // commits so the history below includes it (the user message is appended
+    // functionally — a plain overwrite here used to drop the finalized turn).
+    const finalized = stream
+      ? stream.transient
+        ? { role: 'assistant', content: stream.full, transient: true }
+        : { role: 'assistant', content: stream.full }
+      : null;
+    if (stream) commitStream(stream.full, stream.transient);
+
+    const userMsg = { role: 'user', content: trimmed };
+    setMessages((prev) => [...prev, userMsg]);
     setInput('');
     setLoading(true);
+
+    // The conversation the backend sees: transient (error/machine) bubbles are
+    // display-only and never leave the client.
+    const history = finalized ? [...messages, finalized, userMsg] : [...messages, userMsg];
+    const payload = history
+      .filter((m) => !m.transient)
+      .map(({ role, content }) => ({ role, content }));
 
     // Acquire the single-use token. The first send starts the challenge; later
     // sends usually find the pre-solved token instantly. If Cloudflare demands
@@ -292,9 +331,27 @@ export default function Chat({ inputRef: externalInputRef }) {
       tsSolveNext(); // consume it and pre-solve the next message's token
     }
 
-    const response = await sendMessageToWorker(newMessages, token);
+    let response = await sendMessageToWorker(payload, token);
+    if (response.retryable) {
+      // One silent retry for transport failures (mobile radio drops, timeout
+      // aborts). Never reuse the consumed token — the Worker may have burned
+      // it before the connection died; the replacement is already solving
+      // thanks to tsSolveNext() above.
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+      let retryToken = null;
+      if (tsRef.current) {
+        try {
+          retryToken = await tsRef.current.getResponsePromise(30000);
+        } catch {
+          retryToken = null;
+        }
+        tsSolveNext();
+      }
+      response = await sendMessageToWorker(payload, retryToken);
+    }
+
     setLoading(false);
-    setStream({ full: response.reply, shown: '' });
+    setStream({ full: response.reply, shown: '', transient: !response.ok });
     inputRef.current?.focus();
   };
 
@@ -348,7 +405,7 @@ export default function Chat({ inputRef: externalInputRef }) {
           {stream && (
             <div
               className="bubble bubble--assistant bubble--streaming"
-              onClick={() => commitStream(stream.full)}
+              onClick={() => commitStream(stream.full, stream.transient)}
               title="Click to skip"
               aria-hidden="true"
             >
