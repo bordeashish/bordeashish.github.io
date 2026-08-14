@@ -6,34 +6,46 @@
    by an inline script in index.html), so a manual toggle can override the
    system preference. A prefers-color-scheme fallback covers the no-JS case.
    ========================================================================== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Serif+4:ital,wght@1,500;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Neutrals (light — warm, near-monochrome) */
-  --color-bg: #fafaf9;
+  /* Neutrals (light — warm paper, program-brief) */
+  --color-bg: #f7f6f3;
   --color-surface: #ffffff;
-  --color-surface-2: #f5f5f4;
-  --color-border: #e7e5e4;
-  --color-text: #1c1c1f;
-  --color-text-muted: #6b6b73;
+  --color-surface-2: #efece5;
+  --color-border: #ddd8cd;
+  --color-text: #1a1a18;
+  --color-text-muted: #6b6459;
 
-  /* Accent — refined indigo → violet */
-  --color-accent: #4f46e5;
-  --color-accent-hover: #4338ca;
-  --color-accent-soft: #eef0ff;
-  --color-on-accent: #ffffff;
-  --gradient-accent: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  /* Accent — signal amber (primary) + slate-teal (secondary/status).
+     #95591d passes WCAG AA (4.5:1+) as text on --color-bg and as the
+     on-accent text color on filled amber buttons; #b5722a (visually
+     closer to the brief's "ochre") failed at 3.6:1. */
+  --color-accent: #95591d;
+  --color-accent-hover: #7f4917;
+  --color-accent-soft: #f3e6d4;
+  --color-on-accent: #fffaf3;
+  --color-accent-2: #2d5a5a;
+  --color-accent-2-soft: #e0eae9;
+  --gradient-accent: linear-gradient(135deg, #95591d 0%, #2d5a5a 130%);
 
   /* Hero glow */
-  --color-glow-1: rgba(99, 102, 241, 0.18);
-  --color-glow-2: rgba(139, 92, 246, 0.10);
+  --color-glow-1: rgba(181, 114, 42, 0.14);
+  --color-glow-2: rgba(45, 90, 90, 0.10);
 
   /* Feedback */
-  --color-danger: #c0392b;
-  --color-danger-soft: #fdecea;
+  --color-danger: #a4342a;
+  --color-danger-soft: #f7e6e2;
 
   /* Typography */
-  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --font-display: 'Fraunces', 'Source Serif 4', Georgia, serif;
+  /* Quieter italic for supporting serif text (hero subhead, chat empty state) —
+     Fraunces italic's swash "f" reads well in the bold H1 but is too loud as
+     a fast-scan credibility line; Source Serif 4 keeps the editorial register
+     without competing with the chat panel for the design's one signature risk. */
+  --font-display-quiet: 'Source Serif 4', 'Fraunces', Georgia, serif;
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   --text-xs: 0.78rem;
   --text-sm: 0.9rem;
   --text-base: 1rem;
@@ -51,17 +63,17 @@
   --space-6: 2rem;
   --space-8: 3rem;
 
-  /* Radii */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 18px;
+  /* Radii — mostly sharp/architectural, one soft accent (full) reserved for status dots */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
   --radius-full: 999px;
 
-  /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(20, 20, 30, 0.04), 0 1px 3px rgba(20, 20, 30, 0.06);
-  --shadow-md: 0 4px 14px rgba(20, 20, 30, 0.06), 0 2px 6px rgba(20, 20, 30, 0.05);
-  --shadow-lg: 0 18px 50px rgba(20, 20, 30, 0.10), 0 6px 16px rgba(20, 20, 30, 0.06);
-  --shadow-glow: 0 8px 24px rgba(79, 70, 229, 0.28);
+  /* Elevation — hairline-border-first, shadows kept minimal */
+  --shadow-sm: 0 1px 2px rgba(26, 26, 24, 0.04);
+  --shadow-md: 0 2px 8px rgba(26, 26, 24, 0.06);
+  --shadow-lg: 0 4px 16px rgba(26, 26, 24, 0.07);
+  --shadow-glow: 0 2px 10px rgba(181, 114, 42, 0.20);
 
   /* Layout */
   --container: 760px;
@@ -74,56 +86,61 @@
 
 /* Dark theme — applied via attribute (manual toggle wins) ... */
 :root[data-theme='dark'] {
-  --color-bg: #0b0b0f;
-  --color-surface: #141418;
-  --color-surface-2: #1b1b21;
-  --color-border: #26262d;
-  --color-text: #f4f4f5;
-  --color-text-muted: #a1a1aa;
+  --color-bg: #14130f;
+  --color-surface: #1c1a15;
+  --color-surface-2: #232019;
+  --color-border: #332f26;
+  --color-text: #f2efe7;
+  --color-text-muted: #a89f8f;
 
-  --color-accent: #818cf8;
-  --color-accent-hover: #a5b4fc;
-  --color-accent-soft: #1e1b3a;
-  --color-on-accent: #ffffff;
-  --gradient-accent: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  --color-accent: #e0973f;
+  --color-accent-hover: #eaad63;
+  --color-accent-soft: #3a2c18;
+  --color-on-accent: #1a1308;
+  --color-accent-2: #5fa3a3;
+  --color-accent-2-soft: #1c2e2e;
+  --gradient-accent: linear-gradient(135deg, #e0973f 0%, #5fa3a3 130%);
 
-  --color-glow-1: rgba(99, 102, 241, 0.22);
-  --color-glow-2: rgba(139, 92, 246, 0.16);
+  --color-glow-1: rgba(224, 151, 63, 0.16);
+  --color-glow-2: rgba(95, 163, 163, 0.12);
 
-  --color-danger: #ff6b5e;
-  --color-danger-soft: #3a1c1a;
+  --color-danger: #e2685a;
+  --color-danger-soft: #362019;
 
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
-  --shadow-glow: 0 8px 28px rgba(129, 140, 248, 0.30);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 2px 12px rgba(224, 151, 63, 0.22);
 }
 
 /* ... and via system preference when JS hasn't set an explicit choice. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme]) {
-    --color-bg: #0b0b0f;
-    --color-surface: #141418;
-    --color-surface-2: #1b1b21;
-    --color-border: #26262d;
-    --color-text: #f4f4f5;
-    --color-text-muted: #a1a1aa;
+    --color-bg: #14130f;
+    --color-surface: #1c1a15;
+    --color-surface-2: #232019;
+    --color-border: #332f26;
+    --color-text: #f2efe7;
+    --color-text-muted: #a89f8f;
 
-    --color-accent: #818cf8;
-    --color-accent-hover: #a5b4fc;
-    --color-accent-soft: #1e1b3a;
-    --gradient-accent: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+    --color-accent: #e0973f;
+    --color-accent-hover: #eaad63;
+    --color-accent-soft: #3a2c18;
+    --color-on-accent: #1a1308;
+    --color-accent-2: #5fa3a3;
+    --color-accent-2-soft: #1c2e2e;
+    --gradient-accent: linear-gradient(135deg, #e0973f 0%, #5fa3a3 130%);
 
-    --color-glow-1: rgba(99, 102, 241, 0.22);
-    --color-glow-2: rgba(139, 92, 246, 0.16);
+    --color-glow-1: rgba(224, 151, 63, 0.16);
+    --color-glow-2: rgba(95, 163, 163, 0.12);
 
-    --color-danger: #ff6b5e;
-    --color-danger-soft: #3a1c1a;
+    --color-danger: #e2685a;
+    --color-danger-soft: #362019;
 
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.45);
-    --shadow-lg: 0 18px 50px rgba(0, 0, 0, 0.55);
-    --shadow-glow: 0 8px 28px rgba(129, 140, 248, 0.30);
+    --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.45);
+    --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 2px 12px rgba(224, 151, 63, 0.22);
   }
 }
 
